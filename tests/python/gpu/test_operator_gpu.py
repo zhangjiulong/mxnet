@@ -50,6 +50,24 @@ def check_consistency(sym, ctx_list, scale=1.0, grad_req='write'):
             except Exception, e:
                 print e
 
+    #forward predict
+    for exe in exe_list:
+        exe.forward(is_train=False)
+
+    outputs = [exe.outputs[0].asnumpy() for exe in exe_list]
+    dtypes = [arr.dtype for arr in outputs]
+    max_idx = np.argmax(dtypes)
+
+    for i, exe in enumerate(exe_list):
+        if i == max_idx:
+            continue
+        for arr1, arr2 in zip([outputs[i]], [outputs[max_idx]]):
+            arr2 = arr2.astype(dtypes[i])
+            try:
+                assert_allclose(arr1, arr2, rtol=tol[dtypes[i]], atol=tol[dtypes[i]])
+            except Exception, e:
+                print e
+
 def check_speed(sym, ctx, scale=1.0, N=100, grad_req='write'):
     exe = sym.simple_bind(grad_req=grad_req, **ctx)
     init = [np.random.normal(size=arr.shape, scale=scale) for arr in exe.arg_arrays]
@@ -67,6 +85,15 @@ def check_speed(sym, ctx, scale=1.0, N=100, grad_req='write'):
         exe.backward(exe.outputs[0])
         exe.outputs[0].wait_to_read()
     return (time.time() - tic)*1.0/N
+
+def test_batchnorm_with_type():
+    sym = mx.sym.BatchNorm(name='norm', fix_gamma=False)
+    ctx_list = [{'ctx': mx.gpu(0), 'norm_data': (10, 2, 10, 10), 'type_dict': {'norm_data': np.float32}},
+                {'ctx': mx.cpu(0), 'norm_data': (10, 2, 10, 10), 'type_dict': {'norm_data': np.float32}}]
+    check_consistency(sym, ctx_list)
+
+    sym = mx.sym.BatchNorm(name='norm', fix_gamma=True)
+    check_consistency(sym, ctx_list)
 
 def test_convolution_with_type():
     sym = mx.sym.Convolution(num_filter=3, kernel=(3,3), name='conv')
@@ -180,7 +207,36 @@ def test_embedding_with_type():
                 {'ctx': mx.cpu(0), 'embedding_data': (2, 10), 'type_dict': {'embedding_data': np.float16}}]
     check_consistency(sym, ctx_list, grad_req={'embedding_data': 'null','embedding_weight': 'write'})
 
+def test_pooling_with_type():
+    sym= mx.sym.Pooling(name='pooling', kernel=(3, 3), pool_type='avg')
+    ctx_list = [{'ctx': mx.gpu(0), 'pooling_data': (2, 2, 10, 10), 'type_dict': {'pooling_data': np.float64}},
+                {'ctx': mx.gpu(0), 'pooling_data': (2, 2, 10, 10), 'type_dict': {'pooling_data': np.float32}},
+                {'ctx': mx.gpu(0), 'pooling_data': (2, 2, 10, 10), 'type_dict': {'pooling_data': np.float16}},
+                {'ctx': mx.cpu(0), 'pooling_data': (2, 2, 10, 10), 'type_dict': {'pooling_data': np.float64}},
+                {'ctx': mx.cpu(0), 'pooling_data': (2, 2, 10, 10), 'type_dict': {'pooling_data': np.float32}}]
+    check_consistency(sym, ctx_list)
+
+    sym_3d= mx.sym.Pooling(name='pooling', kernel=(3, 3, 3), pool_type='avg')
+    ctx_list_3d = [{'ctx': mx.gpu(0), 'pooling_data': (2, 2, 10, 10, 10), 'type_dict': {'pooling_data': np.float64}},
+                {'ctx': mx.gpu(0), 'pooling_data': (2, 2, 10, 10, 10), 'type_dict': {'pooling_data': np.float32}},
+                {'ctx': mx.gpu(0), 'pooling_data': (2, 2, 10, 10, 10), 'type_dict': {'pooling_data': np.float16}},
+                {'ctx': mx.cpu(0), 'pooling_data': (2, 2, 10, 10, 10), 'type_dict': {'pooling_data': np.float64}},
+                {'ctx': mx.cpu(0), 'pooling_data': (2, 2, 10, 10, 10), 'type_dict': {'pooling_data': np.float32}}]
+    check_consistency(sym_3d, ctx_list_3d)
+
+def test_regression_with_type()
+    sym_logistic = mx.sym.LogisticRegressionOutput(name = 'regression')
+    sym_linear = mx.sym.LinearRegressionOutput(name = 'regression')
+    ctx_list = [{'ctx': mx.gpu(0), 'regression_data': (2, 2, 10, 10), 'type_dict': {'regression_data': np.float64}},
+                {'ctx': mx.gpu(0), 'regression_data': (2, 2, 10, 10), 'type_dict': {'regression_data': np.float32}},
+                {'ctx': mx.gpu(0), 'regression_data': (2, 2, 10, 10), 'type_dict': {'regression_data': np.float16}},
+                {'ctx': mx.cpu(0), 'regression_data': (2, 2, 10, 10), 'type_dict': {'regression_data': np.float64}},
+                {'ctx': mx.cpu(0), 'regression_data': (2, 2, 10, 10), 'type_dict': {'regression_data': np.float32}}]
+    check_consistency(sym_logistic, ctx_list)
+    check_consistency(sym_linear, ctx_list)
+
 if __name__ == '__main__':
+    test_batchnorm_with_type()
     test_convolution_with_type()
     test_deconvolution_with_type()
     test_upsampling_with_type()
@@ -192,6 +248,8 @@ if __name__ == '__main__':
     test_fullyconnected_with_type()
     test_activation_with_type()
     test_embedding_with_type()
+    test_pooling_with_type()
+    test_regression_with_type()
     #test_softmax_with_shape((3,4), mx.gpu())
     #test_multi_softmax_with_shape((3,4,5), mx.gpu())
 
