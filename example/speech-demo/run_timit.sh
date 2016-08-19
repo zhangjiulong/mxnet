@@ -22,14 +22,14 @@ expdir=exp_mxnet
 ##################################################
 
 # alignment folder
-ali_src=/home/zhangjl/git/asr/kaldi/egs/timit/s5/exp/tri3_ali
+ali_src=/home/zhangjl/git/asr/kaldi/egs/timit35/s5/exp/tri3_ali
 
 # decoding graph
-graph_src=/home/zhangjl/git/asr/kaldi/egs/timit/s5/exp/tri3/graph
+graph_src=/home/zhangjl/git/asr/kaldi/egs/timit35/s5/exp/tri3/graph
 
 # features
-train_src=/home/zhangjl/git/asr/kaldi/egs/timit/s5/data/train
-dev_src=/home/zhangjl/git/asr/kaldi/egs/timit/s5/data/dev
+train_src=/home/zhangjl/git/asr/kaldi/egs/timit35/s5/data/train
+dev_src=/home/zhangjl/git/asr/kaldi/egs/timit35/s5/data/dev
 
 # config file
 config=timit_local_bptt.cfg
