@@ -13,29 +13,29 @@ set -u           #Fail on an undefined variable
 . ./cmd.sh
 . ./path.sh
 
-cmd=hostd3.pl
+cmd=run.pl
 # root folder,
-expdir=exp_mxnet
+expdir=exp_timit
 
 ##################################################
 # Kaldi generated folder
 ##################################################
 
 # alignment folder
-ali_src=/home/zhangjl/git/asr/kaldi/egs/timit35/s5/exp/tri3_ali
+ali_src=/home/zhangjl/git/kaldi/egs/timit35/s5/exp/tri3_ali
 
 # decoding graph
-graph_src=/home/zhangjl/git/asr/kaldi/egs/timit35/s5/exp/tri3/graph
+graph_src=/home/zhangjl/git/kaldi/egs/timit35/s5/exp/tri3/graph
 
 # features
-train_src=/home/zhangjl/git/asr/kaldi/egs/timit35/s5/data/train
-dev_src=/home/zhangjl/git/asr/kaldi/egs/timit35/s5/data/dev
+train_src=/home/zhangjl/git/kaldi/egs/timit35/s5/data/train
+dev_src=/home/zhangjl/git/kaldi/egs/timit35/s5/data/dev
 
 # config file
-config=timit_local_bptt.cfg
+config=default.cfg
 
 # optional settings,
-njdec=128
+njdec=30
 scoring="--min-lmwt 5 --max-lmwt 19"
 
 # The device number to run the training
@@ -72,13 +72,14 @@ if [ $stage -le 0 ] ; then
     mkdir -p $dir/rawpost
 
     # for compressed ali
-    #$cmd JOB=1:$njdec $dir/log/gen_post.JOB.log \
-    #    ali-to-pdf $ali_src/final.mdl "ark:gunzip -c $ali_src/ali.JOB.gz |" \
-    #        ark:- | ali-to-post ark:- ark,scp:$dir/rawpost/post.JOB.ark,$dir/rawpost/post.JOB.scp || exit 1;
     num=`cat $ali_src/num_jobs`
-    $cmd JOB=1:$num $dir/log/gen_post.JOB.log \
-        ali-to-pdf $ali_src/final.mdl ark:$ali_src/ali.JOB.ark \
+    $cmd JOB=1:$njdec $dir/log/gen_post.JOB.log \
+        ali-to-pdf $ali_src/final.mdl "ark:gunzip -c $ali_src/ali.JOB.gz |" \
             ark:- \| ali-to-post ark:- ark,scp:$dir/rawpost/post.JOB.ark,$dir/rawpost/post.JOB.scp || exit 1;
+    #num=`cat $ali_src/num_jobs`
+    #$cmd JOB=1:$num $dir/log/gen_post.JOB.log \
+    #    ali-to-pdf $ali_src/final.mdl ark:$ali_src/ali.JOB.ark \
+    #        ark:- \| ali-to-post ark:- ark,scp:$dir/rawpost/post.JOB.ark,$dir/rawpost/post.JOB.scp || exit 1;
 
 
     for n in $(seq $njdec); do
